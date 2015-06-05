@@ -35,7 +35,7 @@ def lla2ecef(lla):
 
     return np.array(xyz)
 
-def plot_grid(grid,satPos):
+def plot_grid(grid,satPos,title):
     lons, lats = np.meshgrid(grid[:,1],grid[:,0])
     z = grid[:,2]
     scmap = []
@@ -47,6 +47,7 @@ def plot_grid(grid,satPos):
     negs = np.where(z<0)[0]
     cmap[negs] = 0
 
+    #plt.figure(figsize=(1200,600),dpi=96)
     m = Basemap(width=12000000, height=8000000, resolution='l', projection='laea',\
             lat_ts=min(grid[:,0]), lat_0=np.median(grid[:,0]),lon_0=np.median(grid[:,1]))
     m.drawcoastlines()
@@ -57,7 +58,9 @@ def plot_grid(grid,satPos):
     m.scatter(x,y,s=abs(grid[:,2])/500,marker=',',c=cmap,alpha=0.5)
     m.scatter(satx,saty,s=abs(satPos[0,2])/500,marker=',',c=scmap,alpha=0.5)
     m.scatter(satx,saty,s=150,facecolors='none',edgecolors='r')
+    plt.title(title)
     plt.show()
+    #plt.savefig(title+'.png',bbox_inches='tight',pad_inches=0.1)
 
 sat_data = np.loadtxt('/home/sonal/SECS/sat_data_march.txt')
 zero_col = np.zeros((len(sat_data),1))
@@ -93,7 +96,8 @@ for i in range(0,5):
         sat_latlon[0,2] = ptz[0]
         sat_xyz[0,2] = ptz[0]
         sat_data[i,8] = ptz[0]
-        plot_grid(sec_grid,sat_latlon)
+        timestamp = sat_ymd+sat_hms
+        plot_grid(sec_grid,sat_latlon,timestamp)
 
 
 
