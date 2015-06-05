@@ -1,4 +1,3 @@
-__author__ = 'sonal'
 from geostatsmodels import utilities, variograms, model, kriging, geoplot
 import numpy as np
 from mpl_toolkits.basemap import Basemap
@@ -36,11 +35,34 @@ def lla2ecef(lla):
 
     return np.array(xyz)
 
+def plot_grid(grid,satPos):
+    lons, lats = np.meshgrid(grid[:,1],grid[:,0])
+    z = grid[:,2]
+    scmap = []
+    if satPos[0,2]<0:
+        scmap = 0
+    else:
+        scmap = 1
+    cmap = np.ones((len(grid),1))
+    negs = np.where(z<0)[0]
+    cmap[negs] = 0
+
+    m = Basemap(width=12000000, height=8000000, resolution='l', projection='laea',\
+            lat_ts=min(grid[:,0]), lat_0=np.median(grid[:,0]),lon_0=np.median(grid[:,1]))
+    m.drawcoastlines()
+    m.drawparallels(np.arange(-80.,81.,20.))
+    m.drawmeridians(np.arange(-180.,181.,20.))
+    x,y =m(grid[:,1],grid[:,0])
+    satx,saty = m(satPos[0,1],satPos[0,0])
+    m.scatter(x,y,s=abs(grid[:,2])/500,marker=',',c=cmap,alpha=0.5)
+    m.scatter(satx,saty,s=abs(satPos[0,2])/500,marker=',',c=scmap,alpha=0.5)
+    m.scatter(satx,saty,s=150,facecolors='none',edgecolors='r')
+    plt.show()
+
 sat_data = np.loadtxt('/home/sonal/SECS/sat_data_march.txt')
 zero_col = np.zeros((len(sat_data),1))
 sat_data = np.column_stack((sat_data,zero_col))
-print sat_data.shape
-for i in range(0,100):
+for i in range(0,5):
 #for i in range(len(sat_data)):
     print "Processing file "+str(i)+" of "+str(len(sat_data))
     secs_path = '/home/sonal/SECS_EICS/SECS/'
@@ -68,10 +90,14 @@ for i in range(0,100):
         covfct = model.covariance(model.exponential,(900000, sill))
 
         ptz = kriging.simple(grid_xyz,covfct,sat_xyz[:,:2],N=10)
-
+        sat_latlon[0,2] = ptz[0]
+        sat_xyz[0,2] = ptz[0]
         sat_data[i,8] = ptz[0]
+        plot_grid(sec_grid,sat_latlon)
 
-np.savetxt('test.txt', sat_data)
+
+
+
 '''
 data = np.loadtxt('/home/sonal/SECS_EICS/SECS/SECS20110301/01/SECS20110301_000000.dat')
 xyz = lla2ecef(data)
