@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import os
 from math import *
+from multiprocessing import Pool
 
 def lla2ecef(lla):
     #Constats WGS84
@@ -47,7 +48,7 @@ def plot_grid(grid,satPos,title):
     negs = np.where(z<0)[0]
     cmap[negs] = 0
 
-    #plt.figure(figsize=(1200,600),dpi=96)
+    plt.figure(figsize=(18,18))
     m = Basemap(width=12000000, height=8000000, resolution='l', projection='laea',\
             lat_ts=min(grid[:,0]), lat_0=np.median(grid[:,0]),lon_0=np.median(grid[:,1]))
     m.drawcoastlines()
@@ -59,46 +60,58 @@ def plot_grid(grid,satPos,title):
     m.scatter(satx,saty,s=abs(satPos[0,2])/500,marker=',',c=scmap,alpha=0.5)
     m.scatter(satx,saty,s=150,facecolors='none',edgecolors='r')
     plt.title(title)
-    plt.show()
-    #plt.savefig(title+'.png',bbox_inches='tight',pad_inches=0.1)
+    #plt.show()
+    plt.savefig(title+'.png',bbox_inches='tight',pad_inches=0.1)
+
+
+def mainFun(data):
+    #for i in range(0,100):
+    for i in range(len(sat_data)):
+        print "Processing file "+str(i)+" of "+str(len(sat_data))
+        secs_path = '/home/sonal/SECS_EICS/SECS/'
+        sat_y = str(int(sat_data[i,0]))
+        sat_m = str(int(sat_data[i,1])).zfill(2)
+        sat_d = str(int(sat_data[i,2])).zfill(2)
+        sat_ymd = sat_y+sat_m+sat_d
+        sat_h = str(int(sat_data[i,3])).zfill(2)
+        sat_mins = str(int(sat_data[i,4])).zfill(2)
+        sat_secs = str(int(floor(sat_data[i,5]))).zfill(2)
+        sat_hms = sat_h+sat_mins+sat_secs
+
+        SEC_file = secs_path+'SECS'+sat_ymd+'/'+sat_d+'/'+'SECS'+sat_ymd+'_'+sat_hms+'.dat'
+
+        if os.path.exists(SEC_file):
+
+            sec_grid = np.loadtxt(SEC_file)
+            grid_xyz = lla2ecef(sec_grid)
+
+            sat_latlon = np.zeros((1,3))
+            sat_latlon[:,(0,1)] = sat_data[i,(6,7)]
+            sat_xyz = lla2ecef(sat_latlon)
+
+            sill = np.var(grid_xyz[:,2])
+            covfct = model.covariance(model.exponential,(900000, sill))
+
+            ptz = kriging.simple(grid_xyz,covfct,sat_xyz[:,:2],N=10)
+            sat_latlon[0,2] = ptz[0]
+            sat_xyz[0,2] = ptz[0]
+            sat_data[i,8] = ptz[0]
+            timestamp = sat_ymd+sat_hms
+            plot_grid(sec_grid,sat_latlon,timestamp)
+
+    np.savetxt('sat_data_march_krigged.txt',sat_data,delimiter='\t')
+
+
+def mp_handler():
+    p = Pool(4)
+    p.map(mainFun,sat_data)
 
 sat_data = np.loadtxt('/home/sonal/SECS/sat_data_march.txt')
 zero_col = np.zeros((len(sat_data),1))
 sat_data = np.column_stack((sat_data,zero_col))
-for i in range(0,5):
-#for i in range(len(sat_data)):
-    print "Processing file "+str(i)+" of "+str(len(sat_data))
-    secs_path = '/home/sonal/SECS_EICS/SECS/'
-    sat_y = str(int(sat_data[i,0]))
-    sat_m = str(int(sat_data[i,1])).zfill(2)
-    sat_d = str(int(sat_data[i,2])).zfill(2)
-    sat_ymd = sat_y+sat_m+sat_d
-    sat_h = str(int(sat_data[i,3])).zfill(2)
-    sat_mins = str(int(sat_data[i,4])).zfill(2)
-    sat_secs = str(int(floor(sat_data[i,5]))).zfill(2)
-    sat_hms = sat_h+sat_mins+sat_secs
 
-    SEC_file = secs_path+'SECS'+sat_ymd+'/'+sat_d+'/'+'SECS'+sat_ymd+'_'+sat_hms+'.dat'
-
-    if os.path.exists(SEC_file):
-
-        sec_grid = np.loadtxt(SEC_file)
-        grid_xyz = lla2ecef(sec_grid)
-
-        sat_latlon = np.zeros((1,3))
-        sat_latlon[:,(0,1)] = sat_data[i,(6,7)]
-        sat_xyz = lla2ecef(sat_latlon)
-
-        sill = np.var(grid_xyz[:,2])
-        covfct = model.covariance(model.exponential,(900000, sill))
-
-        ptz = kriging.simple(grid_xyz,covfct,sat_xyz[:,:2],N=10)
-        sat_latlon[0,2] = ptz[0]
-        sat_xyz[0,2] = ptz[0]
-        sat_data[i,8] = ptz[0]
-        timestamp = sat_ymd+sat_hms
-        plot_grid(sec_grid,sat_latlon,timestamp)
-
+if __name__ == '__main__':
+    mp_handler()
 
 
 
