@@ -20,7 +20,8 @@ def lla2ecef(lla):
 
     # convert lat and on to radians
     lat = lla[:,0]/180.*pi
-    lon = lla[:,1]/180.*pi
+
+    lon = (lla[:,1]+360)/180.*pi
 
     xyz = np.array(np.zeros(lla.shape))
 
@@ -56,20 +57,20 @@ def plot_grid(grid,satPos,title):
     m.drawmeridians(np.arange(-180.,181.,20.))
     x,y =m(grid[:,1],grid[:,0])
     satx,saty = m(satPos[0,1],satPos[0,0])
-    m.scatter(x,y,s=abs(grid[:,2])/500,marker=',',c=cmap)
-    m.scatter(satx,saty,s=abs(satPos[0,2])/500,marker=',',c=scmap)
+    m.scatter(x,y,s=abs(grid[:,2])/500,marker=',',c=cmap,alpha=0.5)
+    m.scatter(satx,saty,s=abs(satPos[0,2])/500,marker=',',c=scmap,alpha=0.5)
     m.scatter(satx,saty,s=150,facecolors='none',edgecolors='r')
     plt.title(title)
     #plt.show()
     plt.savefig(title+'.png',bbox_inches='tight',pad_inches=0.1)
 
 sat_data = np.loadtxt('/home/sonal/SECS/sat_data_march.txt')
-zero_col = np.zeros((len(sat_data),1))
+zero_col = np.zeros((len(sat_data),2))
 sat_data = np.column_stack((sat_data,zero_col))
 #def mainFun(data):
-#for i in range(0,10):
-for i in range(len(sat_data)):
-    secs_path = '/home/sonal/SECS_EICS/SECS/'
+for i in range(0,10):
+#for i in range(len(sat_data)):
+    secs_path = '/home/sonal/SECS_EICS/EICS/'
     sat_y = str(int(sat_data[i,0]))
     sat_m = str(int(sat_data[i,1])).zfill(2)
     sat_d = str(int(sat_data[i,2])).zfill(2)
@@ -79,31 +80,41 @@ for i in range(len(sat_data)):
     sat_secs = str(int(floor(sat_data[i,5]))).zfill(2)
     sat_hms = sat_h+sat_mins+sat_secs
 
-    SEC_file = secs_path+'SECS'+sat_ymd+'/'+sat_d+'/'+'SECS'+sat_ymd+'_'+sat_hms+'.dat'
+    EICS_file = secs_path+'EICS'+sat_ymd+'/'+sat_d+'/'+'EICS'+sat_ymd+'_'+sat_hms+'.dat'
 
-    #if os.path.exists(SEC_file):
-    if (os.path.exists(SEC_file)) and (sat_ymd in ('20110309', '20110310', '20110311', '20110312')):
-
+    if os.path.exists(EICS_file):
         print "Processing file "+str(i)+" of "+str(len(sat_data))
 
-        sec_grid = np.loadtxt(SEC_file)
-        grid_xyz = lla2ecef(sec_grid)
+        EIC_grid = np.loadtxt(EICS_file)
+        eic_u = EIC_grid[:,:3]
+        eic_v = np.column_stack((EIC_grid[:,:2],EIC_grid[:,3]))
+
+        eic_xyu = lla2ecef(eic_u)
+        eic_xyv = lla2ecef(eic_v)
 
         sat_latlon = np.zeros((1,3))
         sat_latlon[:,(0,1)] = sat_data[i,(6,7)]
+        sat_latlon[:,1] = sat_latlon[:,1]-360
         sat_xyz = lla2ecef(sat_latlon)
 
-        sill = np.var(grid_xyz[:,2])
-        covfct = model.covariance(model.exponential,(900000, sill))
+        sill_u = np.var(eic_xyu[:,2])
+        sill_v = np.var(eic_xyv[:,2])
+        covfct_u = model.covariance(model.exponential,(900000, sill_u))
+        covfct_v = model.covariance(model.exponential,(900000, sill_v))
 
-        ptz = kriging.simple(grid_xyz,covfct,sat_xyz[:,:2],N=10)
-        sat_latlon[0,2] = ptz[0]
-        sat_xyz[0,2] = ptz[0]
-        sat_data[i,8] = ptz[0]
-        timestamp = sat_ymd+sat_hms
-        plot_grid(sec_grid, sat_latlon, timestamp)
+        ptz_u = kriging.simple(eic_xyu,covfct_u,sat_xyz[:,:2],N=10)
+        ptz_v = kriging.simple(eic_xyv,covfct_v,sat_xyz[:,:2],N=10)
 
-#np.savetxt('sat_data_march_krigged.txt',sat_data,delimiter='\t')
+        sat_data[i,8] = ptz_u[0]
+        sat_data[i,9] = ptz_v[0]
+
+        '''if sat_ymd == '20110309' or '20110310' or '20110311'or '20110312':
+            timestamp = sat_ymd+sat_hms
+            plot_grid(sec_grid, sat_latlon, timestamp)
+        else:
+            continue'''
+
+np.savetxt('sat_EICS_march_krigged.txt',sat_data,delimiter='\t')
 
 
 '''def mp_handler():
