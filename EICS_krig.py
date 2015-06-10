@@ -67,8 +67,8 @@ def plot_grid(grid,satPos,title):
 sat_data = np.loadtxt('/home/sonal/SECS/sat_data_march.txt')
 zero_col = np.zeros((len(sat_data),2))
 sat_data = np.column_stack((sat_data,zero_col))
-#def mainFun(data):
-for i in range(0,10):
+
+for i in range(0,1000):
 #for i in range(len(sat_data)):
     secs_path = '/home/sonal/SECS_EICS/EICS/'
     sat_y = str(int(sat_data[i,0]))
@@ -108,57 +108,43 @@ for i in range(0,10):
         sat_data[i,8] = ptz_u[0]
         sat_data[i,9] = ptz_v[0]
 
-        '''if sat_ymd == '20110309' or '20110310' or '20110311'or '20110312':
-            timestamp = sat_ymd+sat_hms
-            plot_grid(sec_grid, sat_latlon, timestamp)
-        else:
-            continue'''
+        plt.figure(figsize=(20,20))
+        lons, lats = np.meshgrid(EIC_grid[:,1],EIC_grid[:,0])
+        u = EIC_grid[:,2]
+        v = EIC_grid[:,3]
+        m = Basemap(width=7000000, height=8000000, resolution='l', projection='laea',\
+                    lat_ts=min(EIC_grid[:,0]), lat_0=np.median(EIC_grid[:,0]),lon_0=-100.)
 
-np.savetxt('sat_EICS_march_krigged.txt',sat_data,delimiter='\t')
-
-
-'''def mp_handler():
-    p = Pool(4)
-    p.map(mainFun,sat_data)'''
-
-
-
-'''if __name__ == '__main__':
-    mp_handler()'''
+        m.drawcoastlines()
+        m.drawparallels(np.arange(-80.,81.,20.),labels=[1,0,0,0],fontsize=10)
+        m.drawmeridians(np.arange(-180.,181.,20.),labels=[0,0,0,1],fontsize=10)
+        x,y =m(EIC_grid[:,1],EIC_grid[:,0])
+        satx,saty = m(sat_latlon[0,1],sat_latlon[0,0])
+        m.quiver(x,y,u,v,color='b',width = 0.002, scale=10000)
+        m.quiver(satx,saty,ptz_u[0],ptz_v[0],color='r',width=0.002, scale = 10000)
+        plt.show()
 
 
+#np.savetxt('sat_EICS_march_krigged.txt',sat_data,delimiter='\t')
 
-'''
-data = np.loadtxt('/home/sonal/SECS_EICS/SECS/SECS20110301/01/SECS20110301_000000.dat')
-xyz = lla2ecef(data)
-pt = lla2ecef(np.array([43.7, 280.6,0]))
-tolerance = 100000
-lags =np.arange(tolerance, 3000000, tolerance)
-sill =np.var(xyz[:,2])
 
-#svm = model.semivariance(model.exponential, (900000, sill))
-#geoplot.semivariogram(xyz, lags, tolerance, model=svm)
-
-covfct = model.covariance(model.exponential, (900000, sill))
-ptz = kriging.simple(xyz,covfct,pt[:,:2],N=10)
-'''
 
 '''#Plotting
-lons, lats = np.meshgrid(data[:,1],data[:,0])
-Z = data[:,2]
-m = Basemap(width=12000000, height=8000000, resolution='l', projection='laea',\
-            lat_ts=min(data[:,0]), lat_0=np.median(data[:,0]),lon_0=np.median(data[:,1]))
+        lons, lats = np.meshgrid(EIC_grid[:,1],EIC_grid[:,0])
+        u = EIC_grid[:,2]
+        v = EIC_grid[:,3]
+        m = Basemap(width=12000000, height=8000000, resolution='l', projection='laea',\
+                    lat_ts=min(EIC_grid[:,0]), lat_0=np.median(EIC_grid[:,0]),lon_0=np.median(EIC_grid[:,1]))
 
-m.drawcoastlines()
-m.drawparallels(np.arange(-80.,81.,20.))
-m.drawmeridians(np.arange(-180.,181.,20.))
-x,y =m(data[:,1],data[:,0])
-cs = m.contour(lons,lats,Z,8000,linewidth=0.5,colors='k',latlon=True)
-#m.scatter(x,y)
-plt.show()'''
+        m.drawcoastlines()
+        m.drawparallels(np.arange(-80.,81.,20.))
+        m.drawmeridians(np.arange(-180.,181.,20.))
+        x,y =m(EIC_grid[:,1],EIC_grid[:,0])
+        m.quiver(x,y,u,v)
+        plt.show()'''
 '''
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.scatter(xyz[:,0],xyz[:,1],xyz[:,2],c='g',marker = '^')
-ax.scatter(pt[0,0],pt[0,1],ptz[0],c='r')
-plt.show()'''
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(eic_xyv[:,0],eic_xyv[:,1],eic_xyv[:,2],c='g',marker = '^')
+        ax.scatter(sat_xyz[0,0],sat_xyz[0,1],ptz_v[0],c='r')
+        plt.show())'''

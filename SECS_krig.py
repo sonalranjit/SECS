@@ -6,6 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import os
 from math import *
 from multiprocessing import Pool
+import matplotlib.cm as cm
 
 def lla2ecef(lla):
     #Constats WGS84
@@ -44,31 +45,30 @@ def plot_grid(grid,satPos,title):
         scmap = 0
     else:
         scmap = 1
-    cmap = np.ones((len(grid),1))
+    colmap = np.ones((len(grid),1))
     negs = np.where(z<0)[0]
-    cmap[negs] = 0
-
+    colmap[negs] = 0
     plt.figure(figsize=(18,18))
-    m = Basemap(width=12000000, height=8000000, resolution='l', projection='laea',\
-            lat_ts=min(grid[:,0]), lat_0=np.median(grid[:,0]),lon_0=np.median(grid[:,1]))
+    m = Basemap(width=8000000, height=8000000, resolution='l', projection='laea',\
+            lat_ts=min(grid[:,0]), lat_0=np.median(grid[:,0]),lon_0=-100.)
     m.drawcoastlines()
-    m.drawparallels(np.arange(-80.,81.,20.))
-    m.drawmeridians(np.arange(-180.,181.,20.))
+    m.drawparallels(np.arange(-80.,81.,20.),labels=[1,0,0,0],fontsize=10)
+    m.drawmeridians(np.arange(-180.,181.,20.),labels=[0,0,0,1],fontsize=10)
     x,y =m(grid[:,1],grid[:,0])
     satx,saty = m(satPos[0,1],satPos[0,0])
-    m.scatter(x,y,s=abs(grid[:,2])/500,marker=',',c=cmap)
-    m.scatter(satx,saty,s=abs(satPos[0,2])/500,marker=',',c=scmap)
+    m.scatter(x,y,s=abs(grid[:,2])/500,marker=',',c=colmap,alpha=0.8)
+    m.scatter(satx,saty,s=abs(satPos[0,2])/500,marker=',')
     m.scatter(satx,saty,s=150,facecolors='none',edgecolors='r')
     plt.title(title)
-    #plt.show()
-    plt.savefig(title+'.png',bbox_inches='tight',pad_inches=0.1)
+    plt.show()
+    #plt.savefig(title+'.png',bbox_inches='tight',pad_inches=0.1)
 
 sat_data = np.loadtxt('/home/sonal/SECS/sat_data_march.txt')
 zero_col = np.zeros((len(sat_data),1))
 sat_data = np.column_stack((sat_data,zero_col))
 #def mainFun(data):
-#for i in range(0,10):
-for i in range(len(sat_data)):
+for i in range(0,100):
+#for i in range(len(sat_data)):
     secs_path = '/home/sonal/SECS_EICS/SECS/'
     sat_y = str(int(sat_data[i,0]))
     sat_m = str(int(sat_data[i,1])).zfill(2)
@@ -81,8 +81,8 @@ for i in range(len(sat_data)):
 
     SEC_file = secs_path+'SECS'+sat_ymd+'/'+sat_d+'/'+'SECS'+sat_ymd+'_'+sat_hms+'.dat'
 
-    #if os.path.exists(SEC_file):
-    if (os.path.exists(SEC_file)) and (sat_ymd in ('20110309', '20110310', '20110311', '20110312')):
+    if os.path.exists(SEC_file):
+    #if (os.path.exists(SEC_file)) and (sat_ymd in ('20110309', '20110310', '20110311', '20110312')):
 
         print "Processing file "+str(i)+" of "+str(len(sat_data))
 
