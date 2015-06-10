@@ -76,7 +76,7 @@ def plot_grid(EIC_grid,sat_latlon,ptz_u,ptz_v,title):
     '''
 
     # Define the size of the figure in inches
-    plt.figure(figsize=(20,20))
+    plt.figure(figsize=(18,18))
 
     # The horizontal components of the Ionospheric current from the EICS grid
     u = EIC_grid[:,2]
@@ -163,7 +163,7 @@ for i in range(len(sat_data)):
         eic_u = EIC_grid[:,:3]
         eic_v = np.column_stack((EIC_grid[:,:2],EIC_grid[:,3]))
 
-        #The EICS grid conatins 2 values for the horizontal components have to separate them and krig it separately
+        #The EICS grid contains 2 values for the horizontal components have to separate them and krig it separately
         eic_xyu = lla2ecef(eic_u)
         eic_xyv = lla2ecef(eic_v)
 

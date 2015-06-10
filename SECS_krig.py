@@ -43,7 +43,7 @@ def lla2ecef(lla):
     if dim == 1:
         lla = np.reshape(lla,(1,3))
 
-    # convert lat and on to radians
+    # convert lat and lon to radians
     lat = lla[:,0]/180.*pi
     lon = lla[:,1]/180.*pi
 
@@ -79,12 +79,12 @@ def plot_grid(grid,satPos,title):
     OUTPUT: A figure of the SECS grid and the satellite position with its krigged value
     '''
 
-    # The amplitude of the vertical ionspheric current
+    # The amplitude of the vertical ionospheric current
     z = grid[:,2]
 
-    '''Defining the colormap for the positive and negative values of the vertical ionspheric current,
+    '''Defining the colormap for the positive and negative values of the vertical ionospheric current,
        The colormap is defined by the variable colmap, it is just defined as 1 for positive amplitude
-       and 0 for negatice amplitude. This colors the amplitude red for positive values and blue for negative values.
+       and 0 for negative amplitude. This colors the amplitude red for positive values and blue for negative values.
     '''
     # Preallocate a column vector of ones for the colormap
     colmap = np.ones((len(grid),1))
@@ -145,7 +145,7 @@ def plot_grid(grid,satPos,title):
 
 
 '''
-Main part of the script, here the GOCE satellite time stamp and position is loaded. Then for each timestap and position
+Main part of the script, here the GOCE satellite time stamp and position is loaded. Then for each timestamp and position
 the corresponding SECS grid is searched. If there is a SECS grid for the current time of the satellite then, using
 the SECS grid a value is krigged for the current satellite position, and a figure plotted and saved.
 '''
@@ -155,6 +155,7 @@ sat_data = np.loadtxt('/home/sonal/SECS/sat_data_march.txt')
 # add an extra column in the satellite data for it be replaced with the krigged value
 zero_col = np.zeros((len(sat_data),1))
 sat_data = np.column_stack((sat_data,zero_col))
+
 #for i in range(0,100):
 # Iterate through the whole matrix of satellite data
 for i in range(len(sat_data)):
