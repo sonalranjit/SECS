@@ -2,6 +2,13 @@ __author__ = 'Sonal Ranjit'
 '''
 This script parses through a GOCE satellite data that includes time information and geodetic coordinates, and based on
 a SECS grid for that time an amplitude value is krigged for the satellite posiiton.
+
+The package used for kriging is geostatsmodel developed by Connor Johnson.
+A simple example can be found at: http://connor-johnson.com/2014/03/20/simple-kriging-in-python/
+
+The github for the project can be accessed at: https://github.com/cjohnson318/geostatsmodels
+
+
 '''
 
 from geostatsmodels import model, kriging
