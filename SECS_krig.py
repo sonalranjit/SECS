@@ -1,4 +1,5 @@
 __author__ = 'Sonal Ranjit'
+
 '''
 This script parses through a GOCE satellite data that includes time information and geodetic coordinates, and based on
 a SECS grid for that time an amplitude value is krigged for the satellite posiiton.
@@ -72,7 +73,7 @@ def plot_grid(grid,satPos,title):
     INPUT:
     1) grid --> is the SECS grid
     2) satPos --> is the position of the satellite and its krigged value
-    3) title --> is the timestamp of the c
+    3) title --> is the timestamp of the satellite
 
     ----------------------------------------------------
     OUTPUT: A figure of the SECS grid and the satellite position with its krigged value
