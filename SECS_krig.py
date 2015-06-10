@@ -1,14 +1,30 @@
-from geostatsmodels import utilities, variograms, model, kriging, geoplot
+__author__ = 'Sonal Ranjit'
+'''
+This script parses through a GOCE satellite data that includes time information and geodetic coordinates, and based on
+a SECS grid for that time an amplitude value is krigged for the satellite posiiton.
+'''
+
+from geostatsmodels import model, kriging
 import numpy as np
 from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import os
 from math import *
-from multiprocessing import Pool
-import matplotlib.cm as cm
 
 def lla2ecef(lla):
+    ''' This functions converts and inputted matrix of geodetic coordinates of size nx3 to ECEF coordinates on
+    the ellipsoid so ellipsoid height =0, then outputs it.
+
+    --------------------------------------------------------------
+    INPUT: A row vector or a matrix of geodetic coordinates, Latitude, Longitude, and height. the height in this case
+    can be 0 or for the GOCE data type it can just be the instrument value since the coordinates are going to be
+    converted only to the surface of the ellipsoid.
+
+    ---------------------------------------------------------------
+    OUTPUT: A row vector or a matrix of ECEF coordinates, X, Y , and height or the instrument value in this case.
+
+    '''
+
     #Constats WGS84
     a = 6378137.
     b = 6356752.3142
@@ -23,9 +39,12 @@ def lla2ecef(lla):
     lat = lla[:,0]/180.*pi
     lon = lla[:,1]/180.*pi
 
+    # preallocate the output vector for the ECEF coordinates
     xyz = np.array(np.zeros(lla.shape))
 
+    # Radius of the prime vertical
     N = a/np.sqrt(1-e2*np.sin(lat)*np.sin(lat))
+
     # Calculate the X-coordinate
     xyz[:,0] = (N)*np.cos(lat)*np.cos(lon)
 
@@ -35,41 +54,111 @@ def lla2ecef(lla):
     # Keep the SECS data as it is
     xyz[:,2] = lla[:,2]
 
+    #return the ECEF coordinates
     return np.array(xyz)
 
 def plot_grid(grid,satPos,title):
-    lons, lats = np.meshgrid(grid[:,1],grid[:,0])
+    ''' This function plots a scatter map of the SECS Grid and its amplitudes, and the Krigged value for the satellite
+    and its position.
+
+    ----------------------------------------------------
+    INPUT:
+    1) grid --> is the SECS grid
+    2) satPos --> is the position of the satellite and its krigged value
+    3) title --> is the timestamp of the c
+
+    ----------------------------------------------------
+    OUTPUT: A figure of the SECS grid and the satellite position with its krigged value
+    '''
+
+    # The amplitude of the vertical ionspheric current
     z = grid[:,2]
-    scmap = []
-    if satPos[0,2]<0:
-        scmap = 0
-    else:
-        scmap = 1
+
+    '''Defining the colormap for the positive and negative values of the vertical ionspheric current,
+       The colormap is defined by the variable colmap, it is just defined as 1 for positive amplitude
+       and 0 for negatice amplitude. This colors the amplitude red for positive values and blue for negative values.
+    '''
+    # Preallocate a column vector of ones for the colormap
     colmap = np.ones((len(grid),1))
+    #find all the indices of the negative amplitudes in grid data.
     negs = np.where(z<0)[0]
+    # for the indices with negative values define the colormap as 0.
     colmap[negs] = 0
+
+    ''' This next section of the function is where the plotting of the figure takes places. The module used for plotting
+    data on maps is the built in module in matplotlib called mpl_toolkits.
+    Source and api: http://matplotlib.org/basemap/index.html
+    The module allows to plot 2D data on maps, with various different projections, it is similar to MATLAB mapping
+    toolbox and GMT.
+    '''
+
+    # Defining the size of the figure in inches
     plt.figure(figsize=(18,18))
+
+    '''
+    The m variable defines the basemap of area that is going to be displayed.
+    1) width and height is the area in pixels of the area to be displayed.
+    2) resolution is the resolution of the boundary dataset being used 'c' for crude and 'l' for low
+    3) projection is type of projection of the basemape, in this case it is a Lambert Azimuthal Equal Area projection
+    4) lat_ts is the latitude of true scale,
+    5) lat_0 and lon_0 is the latitude and longitude of the central point of the basemap
+    '''
     m = Basemap(width=8000000, height=8000000, resolution='l', projection='laea',\
             lat_ts=min(grid[:,0]), lat_0=np.median(grid[:,0]),lon_0=-100.)
-    m.drawcoastlines()
+
+    m.drawcoastlines()    #draw the coastlines on the basemap
+
+    # draw parallels and meridians and label them
     m.drawparallels(np.arange(-80.,81.,20.),labels=[1,0,0,0],fontsize=10)
     m.drawmeridians(np.arange(-180.,181.,20.),labels=[0,0,0,1],fontsize=10)
+
+    # Project the inputted grid into x,y values defined of the projected basemap parameters
     x,y =m(grid[:,1],grid[:,0])
     satx,saty = m(satPos[0,1],satPos[0,0])
-    m.scatter(x,y,s=abs(grid[:,2])/500,marker=',',c=colmap,alpha=0.8)
-    m.scatter(satx,saty,s=abs(satPos[0,2])/500,marker=',')
+
+    '''
+    Plot the inputted grid as a scatter plot on the basemap,
+    1) x,y are the projected latitude and longitude coordinates of the grid
+    2) s is the size of the scatter point it is base of the amplitude of the ionospheric current
+    3) c is the colormap for the scatter point
+    '''
+    m.scatter(x,y,s=abs(grid[:,2])/500,marker=',',c=colmap,edgecolors='none',alpha=0.8)
+    m.scatter(satx,saty,s=abs(satPos[0,2])/500,edgecolors='none',marker=',')
     m.scatter(satx,saty,s=150,facecolors='none',edgecolors='r')
+
+    #title of the figure
     plt.title(title)
-    plt.show()
+
+    # show the figure
+    plt.show() #comment this if you don't want to display the figure for every grid.
+
+    # save the figure
     #plt.savefig(title+'.png',bbox_inches='tight',pad_inches=0.1)
 
+
+'''
+Main part of the script, here the GOCE satellite time stamp and position is loaded. Then for each timestap and position
+the corresponding SECS grid is searched. If there is a SECS grid for the current time of the satellite then, using
+the SECS grid a value is krigged for the current satellite position, and a figure plotted and saved.
+'''
+
+# Load the GOCE satellite data
 sat_data = np.loadtxt('/home/sonal/SECS/sat_data_march.txt')
+# add an extra column in the satellite data for it be replaced with the krigged value
 zero_col = np.zeros((len(sat_data),1))
 sat_data = np.column_stack((sat_data,zero_col))
-#def mainFun(data):
-for i in range(0,100):
-#for i in range(len(sat_data)):
+#for i in range(0,100):
+# Iterate through the whole matrix of satellite data
+for i in range(len(sat_data)):
+    '''
+    This section of the loop parses the time information from the satellite data to form a string which is used to check
+    if a SECS grid exists for that time.
+    '''
+    # Define the path to where all the SECS grids lie
     secs_path = '/home/sonal/SECS_EICS/SECS/'
+    #secs_path = '/home/sonal/SECS_20110309/'
+
+    # Extract the Year, Month, Day, Hour, Minutes, Seconds from the satellite data.
     sat_y = str(int(sat_data[i,0]))
     sat_m = str(int(sat_data[i,1])).zfill(2)
     sat_d = str(int(sat_data[i,2])).zfill(2)
@@ -79,75 +168,43 @@ for i in range(0,100):
     sat_secs = str(int(floor(sat_data[i,5]))).zfill(2)
     sat_hms = sat_h+sat_mins+sat_secs
 
+    # Concatenate all the time information to a single string to see if the SECS grid exists
     SEC_file = secs_path+'SECS'+sat_ymd+'/'+sat_d+'/'+'SECS'+sat_ymd+'_'+sat_hms+'.dat'
 
+    '''
+    This sections checks if there is a SECS grid available for the current time instance of the satellite data, if it
+    does exits then the SECS grid is loaded, and using the grid a value is krigged for the current satellite position
+    on the grid.
+    '''
     if os.path.exists(SEC_file):
-    #if (os.path.exists(SEC_file)) and (sat_ymd in ('20110309', '20110310', '20110311', '20110312')):
 
         print "Processing file "+str(i)+" of "+str(len(sat_data))
 
+        # Load the SECS grid and convert to ECEF
         sec_grid = np.loadtxt(SEC_file)
         grid_xyz = lla2ecef(sec_grid)
 
+        # Load the Satellite position and convert it to ECEF
         sat_latlon = np.zeros((1,3))
         sat_latlon[:,(0,1)] = sat_data[i,(6,7)]
         sat_xyz = lla2ecef(sat_latlon)
 
+        # Determine the sill for the semivariance model of the grid
         sill = np.var(grid_xyz[:,2])
+
+        # Define the type of semivariacne model to be used for kriging
         covfct = model.covariance(model.exponential,(900000, sill))
 
+        # Krig the value for the satellite position using simple kriging and the defined semivariance model and 10
+        # neighbouring points
         ptz = kriging.simple(grid_xyz,covfct,sat_xyz[:,:2],N=10)
+
+        # Add the krigged value to the different variables
         sat_latlon[0,2] = ptz[0]
         sat_xyz[0,2] = ptz[0]
         sat_data[i,8] = ptz[0]
         timestamp = sat_ymd+sat_hms
         plot_grid(sec_grid, sat_latlon, timestamp)
 
+# Save the updated satellite data with the krigged values
 #np.savetxt('sat_data_march_krigged.txt',sat_data,delimiter='\t')
-
-
-'''def mp_handler():
-    p = Pool(4)
-    p.map(mainFun,sat_data)'''
-
-
-
-'''if __name__ == '__main__':
-    mp_handler()'''
-
-
-
-'''
-data = np.loadtxt('/home/sonal/SECS_EICS/SECS/SECS20110301/01/SECS20110301_000000.dat')
-xyz = lla2ecef(data)
-pt = lla2ecef(np.array([43.7, 280.6,0]))
-tolerance = 100000
-lags =np.arange(tolerance, 3000000, tolerance)
-sill =np.var(xyz[:,2])
-
-#svm = model.semivariance(model.exponential, (900000, sill))
-#geoplot.semivariogram(xyz, lags, tolerance, model=svm)
-
-covfct = model.covariance(model.exponential, (900000, sill))
-ptz = kriging.simple(xyz,covfct,pt[:,:2],N=10)
-'''
-
-'''#Plotting
-lons, lats = np.meshgrid(data[:,1],data[:,0])
-Z = data[:,2]
-m = Basemap(width=12000000, height=8000000, resolution='l', projection='laea',\
-            lat_ts=min(data[:,0]), lat_0=np.median(data[:,0]),lon_0=np.median(data[:,1]))
-
-m.drawcoastlines()
-m.drawparallels(np.arange(-80.,81.,20.))
-m.drawmeridians(np.arange(-180.,181.,20.))
-x,y =m(data[:,1],data[:,0])
-cs = m.contour(lons,lats,Z,8000,linewidth=0.5,colors='k',latlon=True)
-#m.scatter(x,y)
-plt.show()'''
-'''
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.scatter(xyz[:,0],xyz[:,1],xyz[:,2],c='g',marker = '^')
-ax.scatter(pt[0,0],pt[0,1],ptz[0],c='r')
-plt.show()'''
