@@ -86,12 +86,10 @@ def plot_grid(grid,satPos,title):
        The colormap is defined by the variable colmap, it is just defined as 1 for positive amplitude
        and 0 for negative amplitude. This colors the amplitude red for positive values and blue for negative values.
     '''
-    # Preallocate a column vector of ones for the colormap
-    colmap = np.ones((len(grid),1))
     #find all the indices of the negative amplitudes in grid data.
     negs = np.where(z<0)[0]
-    # for the indices with negative values define the colormap as 0.
-    colmap[negs] = 0
+    poss = np.where(z>0)[0]
+
 
     ''' This next section of the function is where the plotting of the figure takes places. The module used for plotting
     data on maps is the built in module in matplotlib called mpl_toolkits.
@@ -111,9 +109,11 @@ def plot_grid(grid,satPos,title):
     4) lat_ts is the latitude of true scale,
     5) lat_0 and lon_0 is the latitude and longitude of the central point of the basemap
     '''
-    m = Basemap(width=8000000, height=8000000, resolution='l', projection='laea',\
-            lat_ts=min(grid[:,0]), lat_0=np.median(grid[:,0]),lon_0=-100.)
+    #m = Basemap(width=8000000, height=8000000, resolution='l', projection='laea',\
+            #lat_ts=min(grid[:,0]), lat_0=np.median(grid[:,0]),lon_0=-100.)
 
+    m = Basemap(width=8000000, height=8000000, resolution='l', projection='lcc',\
+             lat_0=60,lon_0=-100.)
     m.drawcoastlines()    #draw the coastlines on the basemap
 
     # draw parallels and meridians and label them
@@ -130,19 +130,20 @@ def plot_grid(grid,satPos,title):
     2) s is the size of the scatter point it is base of the amplitude of the ionospheric current
     3) c is the colormap for the scatter point
     '''
-    m.scatter(x,y,s=abs(grid[:,2])/500,marker=',',c=colmap,edgecolors='none',alpha=0.8)
-    m.scatter(satx,saty,s=abs(satPos[0,2])/500,edgecolors='none',marker=',')
-    m.scatter(satx,saty,s=150,facecolors='none',edgecolors='r')
+    m.scatter(x[negs],y[negs],s=abs(grid[negs,2])/300,marker=',',c='#0000FF',edgecolors='none')
+    m.scatter(x[poss],y[poss],s=abs(grid[poss,2])/300,marker=',',c='#FF0000',edgecolors='none')
+    m.scatter(satx,saty,s=abs(satPos[0,2])/300,c='#66FF66',edgecolors='none',marker=',')
+    m.scatter(satx,saty,s=800,facecolors='none',edgecolors='#66FF66',linewidth='5')
 
     #title of the figure
     plt.title(title)
 
     # show the figure
-    plt.show() #comment this if you don't want to display the figure for every grid.
+    #plt.show() #comment this if you don't want to display the figure for every grid.
 
     # save the figure
-    #plt.savefig(title+'.png',bbox_inches='tight',pad_inches=0.1)
-
+    plt.savefig('/home/sonal/SECS_201104/figs/'+title+'.png',bbox_inches='tight',pad_inches=0.1)
+    plt.clf()
 
 '''
 Main part of the script, here the GOCE satellite time stamp and position is loaded. Then for each timestamp and position
@@ -151,21 +152,20 @@ the SECS grid a value is krigged for the current satellite position, and a figur
 '''
 
 # Load the GOCE satellite data
-sat_data = np.loadtxt('/home/sonal/SECS/sat_data_march.txt')
+sat_data = np.loadtxt('/home/sonal/SECS/sat_track_201104.txt')
 # add an extra column in the satellite data for it be replaced with the krigged value
 zero_col = np.zeros((len(sat_data),1))
 sat_data = np.column_stack((sat_data,zero_col))
-
+prev_min = []
 #for i in range(0,100):
 # Iterate through the whole matrix of satellite data
-for i in range(len(sat_data)):
+for i in range(548646,len(sat_data)):
     '''
     This section of the loop parses the time information from the satellite data to form a string which is used to check
     if a SECS grid exists for that time.
     '''
     # Define the path to where all the SECS grids lie
     secs_path = '/home/sonal/SECS_EICS/SECS/'
-    #secs_path = '/home/sonal/SECS_20110309/'
 
     # Extract the Year, Month, Day, Hour, Minutes, Seconds from the satellite data.
     sat_y = str(int(sat_data[i,0]))
@@ -179,13 +179,13 @@ for i in range(len(sat_data)):
 
     # Concatenate all the time information to a single string to see if the SECS grid exists
     SEC_file = secs_path+'SECS'+sat_ymd+'/'+sat_d+'/'+'SECS'+sat_ymd+'_'+sat_hms+'.dat'
-
     '''
     This sections checks if there is a SECS grid available for the current time instance of the satellite data, if it
     does exits then the SECS grid is loaded, and using the grid a value is krigged for the current satellite position
     on the grid.
     '''
-    if os.path.exists(SEC_file):
+    #if os.path.exists(SEC_file):
+    if os.path.exists(SEC_file) and (sat_mins != prev_min):
 
         print "Processing file "+str(i)+" of "+str(len(sat_data))
 
@@ -214,6 +214,6 @@ for i in range(len(sat_data)):
         sat_data[i,8] = ptz[0]
         timestamp = sat_ymd+sat_hms
         plot_grid(sec_grid, sat_latlon, timestamp)
-
+    prev_min = sat_mins
 # Save the updated satellite data with the krigged values
-#np.savetxt('sat_data_march_krigged.txt',sat_data,delimiter='\t')
+#np.savetxt('sat_data_april_krigged.txt',sat_data,delimiter='\t')

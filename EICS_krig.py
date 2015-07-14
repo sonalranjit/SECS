@@ -90,7 +90,7 @@ def plot_grid(EIC_grid,sat_latlon,ptz_u,ptz_v,title):
     4) lat_ts is the latitude of true scale,
     5) lat_0 and lon_0 is the latitude and longitude of the central point of the basemap
     '''
-    m = Basemap(width=7000000, height=5000000, resolution='l', projection='laea',\
+    m = Basemap(width=8000000, height=8000000, resolution='l', projection='laea',\
                 lat_ts=min(EIC_grid[:,0]), lat_0=np.median(EIC_grid[:,0]),lon_0=-100.)
 
     m.drawcoastlines() #draw the coastlines on the basemap
@@ -109,10 +109,14 @@ def plot_grid(EIC_grid,sat_latlon,ptz_u,ptz_v,title):
     2) u and v are the horizontal components of the current
     3) the EICS grid values are plotted in blue color where as the satellite krigged values are in red
     '''
-    m.quiver(x,y,u,v,color='b',width = 0.002, scale=10000)
-    m.quiver(satx,saty,ptz_u[0],ptz_v[0],color='r',width=0.002, scale = 10000)
+    m.quiver(x,y,u,v,width = 0.004, scale=10000,color='#0000FF')
+    m.quiver(satx,saty,ptz_u[0],ptz_v[0],color='#FF0000',width=0.004, scale = 10000)
+    m.scatter(satx,saty,s=400,facecolors='none',edgecolors='#66FF66',linewidth='5')
+
     plt.title(title)
-    plt.show()
+    plt.savefig('/home/sonal/EICS_201104/figs/'+title+'.png',bbox_inches='tight',pad_inches=0.1)
+    #plt.show()
+    plt.clf()
 
 
 '''
@@ -122,20 +126,21 @@ the EICS grid the horizontal components value is krigged for the current satelli
 '''
 
 #Load the GOCE satellite data
-sat_data = np.loadtxt('/home/sonal/SECS/sat_data_march.txt')
+sat_data = np.loadtxt('/home/sonal/SECS/sat_track_201104.txt')
 # add an extra column in the satellite data for it be replaced with the krigged value
 zero_col = np.zeros((len(sat_data),2))
 sat_data = np.column_stack((sat_data,zero_col))
-
+prev_min = []
 # Iterate through the whole matrix of satellite data
 for i in range(len(sat_data)):
+
     '''
     This section of the loop parses the time information from the satellite data to form a string which is used to check
     if a EICS grid exists for that time.
     '''
 
     # Define the path to where all the EICS grids lie
-    secs_path = '/home/sonal/SECS_EICS/EICS/'
+    eics_path = '/home/sonal/EICS_201104/'
 
     # Extract the Year, Month, Day, Hour, Minutes, Seconds from the satellite data.
     sat_y = str(int(sat_data[i,0]))
@@ -148,14 +153,15 @@ for i in range(len(sat_data)):
     sat_hms = sat_h+sat_mins+sat_secs
 
     # Concatenate all the time information to a single string to see if the SECS grid exists
-    EICS_file = secs_path+'EICS'+sat_ymd+'/'+sat_d+'/'+'EICS'+sat_ymd+'_'+sat_hms+'.dat'
+    EICS_file = eics_path+'EICS'+sat_ymd+'/'+sat_d+'/'+'EICS'+sat_ymd+'_'+sat_hms+'.dat'
 
     '''
     This sections checks if there is a EICS grid available for the current time instance of the satellite data, if it
     does exists then the EICS grid is loaded, and using the grid a value is krigged for the current satellite position
     on the grid.
     '''
-    if os.path.exists(EICS_file):
+    #if os.path.exists(EICS_file):
+    if os.path.exists(EICS_file) and (sat_mins !=prev_min):
         print "Processing file "+str(i)+" of "+str(len(sat_data))
 
         # Load the EICS grid and convert to ECEF
@@ -193,5 +199,6 @@ for i in range(len(sat_data)):
 
         #Call the plotting function to plot the grid and krigged values
         plot_grid(EIC_grid,sat_latlon,ptz_u,ptz_v,timestamp)
+    prev_min = sat_mins
 
-#np.savetxt('sat_EICS_march_krigged.txt',sat_data,delimiter='\t')
+#np.savetxt('sat_EICS_april_krigged.txt',sat_data,delimiter='\t')
